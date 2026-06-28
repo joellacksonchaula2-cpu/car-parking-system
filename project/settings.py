@@ -18,12 +18,13 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     CORS_ALLOWED_ORIGINS=(list, []),
     CSRF_TRUSTED_ORIGINS=(list, []),
-    NETLIFY_FRONTEND_ORIGIN=(str, "https://smart-car-packing-systems.netlify.app"),
+    NETLIFY_FRONTEND_ORIGIN=(str, "https://nzerucarparkingsystem.netlify.app"),
     NETLIFY_FRONTEND_ORIGINS=(
         list,
         [
             "https://smart-car-packing-systems.netlify.app",
             "https://imaginative-sherbet-d3e249.netlify.app",
+            "https://nzerucarparkingsystem.netlify.app",
         ],
     ),
     RAILWAY_PUBLIC_DOMAIN=(str, ""),
@@ -84,6 +85,7 @@ NETLIFY_FRONTEND_ORIGINS = _merge_unique(
         default=[
             "https://smart-car-packing-systems.netlify.app",
             "https://imaginative-sherbet-d3e249.netlify.app",
+            "https://nzerucarparkingsystem.netlify.app",
         ],
     ),
     [NETLIFY_FRONTEND_ORIGIN] if NETLIFY_FRONTEND_ORIGIN else [],

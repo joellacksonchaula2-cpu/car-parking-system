@@ -7,6 +7,7 @@ class CorsConfigurationTests(TestCase):
         origins = {
             "https://smart-car-packing-systems.netlify.app",
             "https://imaginative-sherbet-d3e249.netlify.app",
+            "https://nzerucarparkingsystem.netlify.app",
         }
 
         for origin in origins:
@@ -14,7 +15,7 @@ class CorsConfigurationTests(TestCase):
             self.assertIn(origin, settings.CSRF_TRUSTED_ORIGINS)
 
     def test_login_preflight_includes_cors_headers(self):
-        origin = "https://imaginative-sherbet-d3e249.netlify.app"
+        origin = "https://nzerucarparkingsystem.netlify.app"
         client = Client(HTTP_ORIGIN=origin)
 
         response = client.options(
