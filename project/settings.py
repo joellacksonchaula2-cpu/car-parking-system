@@ -1,0 +1,276 @@
+from __future__ import annotations
+
+import logging
+from datetime import timedelta
+from pathlib import Path
+
+import dj_database_url
+import environ
+from corsheaders.defaults import default_headers, default_methods
+from django.core.exceptions import ImproperlyConfigured
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+logger = logging.getLogger(__name__)
+
+env = environ.Env(
+    DEBUG=(bool, False),
+    SECRET_KEY=(str, "unsafe-development-key"),
+    ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    CORS_ALLOWED_ORIGINS=(list, []),
+    CSRF_TRUSTED_ORIGINS=(list, []),
+    NETLIFY_FRONTEND_ORIGIN=(str, "https://smart-car-packing-systems.netlify.app"),
+    NETLIFY_FRONTEND_ORIGINS=(
+        list,
+        [
+            "https://smart-car-packing-systems.netlify.app",
+            "https://imaginative-sherbet-d3e249.netlify.app",
+        ],
+    ),
+    RAILWAY_PUBLIC_DOMAIN=(str, ""),
+    RAILWAY_PRIVATE_DOMAIN=(str, ""),
+    AUTO_CREATE_DEFAULT_SUPERUSER=(bool, True),
+    AUTO_RESET_DEFAULT_SUPERUSER_PASSWORD=(bool, False),
+    DEFAULT_SUPERUSER_USERNAME=(str, "admin"),
+    DEFAULT_SUPERUSER_PASSWORD=(str, "admin12345"),
+    DEFAULT_SUPERUSER_EMAIL=(str, "admin@example.com"),
+    DATABASE_SSL_REQUIRE=(bool, False),
+    SECURE_SSL_REDIRECT=(bool, False),
+    DJANGO_TIME_ZONE=(str, "Africa/Johannesburg"),
+)
+
+environ.Env.read_env(BASE_DIR / ".env")
+DEBUG = env.bool("DEBUG")
+
+
+def _validate_secret_key(value: str, *, debug: bool) -> str:
+    if debug:
+        return value
+
+    if not value or value == "unsafe-development-key":
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG=False.")
+
+    if len(value) < 32:
+        # Keep the service available, but flag weak keys so they can be rotated.
+        logger.warning(
+            "SECRET_KEY is shorter than 32 characters; rotate it to a stronger value."
+        )
+
+    return value
+
+
+SECRET_KEY = _validate_secret_key(env("SECRET_KEY"), debug=DEBUG)
+RAILWAY_PUBLIC_DOMAIN = env("RAILWAY_PUBLIC_DOMAIN", default="").strip()
+RAILWAY_PRIVATE_DOMAIN = env("RAILWAY_PRIVATE_DOMAIN", default="").strip()
+NETLIFY_FRONTEND_ORIGIN = env("NETLIFY_FRONTEND_ORIGIN").strip()
+AUTO_CREATE_DEFAULT_SUPERUSER = env.bool("AUTO_CREATE_DEFAULT_SUPERUSER")
+AUTO_RESET_DEFAULT_SUPERUSER_PASSWORD = env.bool("AUTO_RESET_DEFAULT_SUPERUSER_PASSWORD")
+DEFAULT_SUPERUSER_USERNAME = env("DEFAULT_SUPERUSER_USERNAME", default="admin").strip()
+DEFAULT_SUPERUSER_PASSWORD = env("DEFAULT_SUPERUSER_PASSWORD", default="admin12345")
+DEFAULT_SUPERUSER_EMAIL = env("DEFAULT_SUPERUSER_EMAIL", default="admin@example.com").strip()
+
+
+def _merge_unique(*groups: list[str]) -> list[str]:
+    merged: list[str] = []
+    for group in groups:
+        for value in group:
+            if value and value not in merged:
+                merged.append(value)
+    return merged
+
+
+NETLIFY_FRONTEND_ORIGINS = _merge_unique(
+    env.list(
+        "NETLIFY_FRONTEND_ORIGINS",
+        default=[
+            "https://smart-car-packing-systems.netlify.app",
+            "https://imaginative-sherbet-d3e249.netlify.app",
+        ],
+    ),
+    [NETLIFY_FRONTEND_ORIGIN] if NETLIFY_FRONTEND_ORIGIN else [],
+)
+
+ALLOWED_HOSTS = _merge_unique(
+    env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"]),
+    [RAILWAY_PUBLIC_DOMAIN] if RAILWAY_PUBLIC_DOMAIN else [],
+    [RAILWAY_PRIVATE_DOMAIN] if RAILWAY_PRIVATE_DOMAIN else [],
+    ["healthcheck.railway.app"],
+)
+CSRF_TRUSTED_ORIGINS = _merge_unique(
+    env.list("CSRF_TRUSTED_ORIGINS", default=[]),
+    [f"https://{RAILWAY_PUBLIC_DOMAIN}"] if RAILWAY_PUBLIC_DOMAIN else [],
+    NETLIFY_FRONTEND_ORIGINS,
+)
+CORS_ALLOWED_ORIGINS = _merge_unique(
+    env.list("CORS_ALLOWED_ORIGINS", default=[]),
+    [f"https://{RAILWAY_PUBLIC_DOMAIN}"] if RAILWAY_PUBLIC_DOMAIN else [],
+    NETLIFY_FRONTEND_ORIGINS,
+)
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.postgres",
+    "corsheaders",
+    "storages",
+    "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
+    "drf_spectacular",
+    "apps.accounts",
+    "apps.audit",
+    "apps.billing",
+    "apps.camera",
+    "apps.config",
+    "apps.parking",
+    "apps.analytics",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "project.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "project.wsgi.application"
+ASGI_APPLICATION = "project.asgi.application"
+
+database_url = env("DATABASE_URL", default="")
+if DEBUG:
+    database_url = database_url or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+elif not database_url:
+    raise ImproperlyConfigured(
+        "DATABASE_URL is required when DEBUG=False. Use PostgreSQL in production; SQLite is only for local development."
+    )
+
+DATABASES = {
+    "default": dj_database_url.config(
+        default=database_url,
+        conn_max_age=600,
+        ssl_require=env.bool("DATABASE_SSL_REQUIRE"),
+    )
+}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = env("DJANGO_TIME_ZONE")
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = env("STATIC_URL", default="/static/")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+MEDIA_URL = env("MEDIA_URL", default="/media/")
+MEDIA_ROOT = BASE_DIR / "media"
+
+USE_S3_STORAGE = env.bool("USE_S3_STORAGE", default=False)
+if USE_S3_STORAGE:
+    AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="")
+    AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default="")
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    }
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL = "accounts.User"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Smart Parking POS API",
+    "DESCRIPTION": "REST API for the smart car parking and POS platform.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "SIGNING_KEY": SECRET_KEY,
+}
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers)
+CORS_ALLOW_METHODS = list(default_methods)
+CORS_URLS_REGEX = r"^/api/.*$"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT")
+SECURE_REDIRECT_EXEMPT = [r"^health/$", r"^api/health/$"]
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+X_FRAME_OPTIONS = "DENY"
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "Lax"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+}
