@@ -36,6 +36,7 @@ env = environ.Env(
     DEFAULT_SUPERUSER_EMAIL=(str, "admin@example.com"),
     DATABASE_SSL_REQUIRE=(bool, False),
     SECURE_SSL_REDIRECT=(bool, False),
+    CORS_ALLOW_ALL_ORIGINS=(bool, True),
     DJANGO_TIME_ZONE=(str, "Africa/Johannesburg"),
 )
 
@@ -95,6 +96,7 @@ ALLOWED_HOSTS = _merge_unique(
     env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"]),
     [RAILWAY_PUBLIC_DOMAIN] if RAILWAY_PUBLIC_DOMAIN else [],
     [RAILWAY_PRIVATE_DOMAIN] if RAILWAY_PRIVATE_DOMAIN else [],
+    ["smart-parking-backend-production-18b7.up.railway.app"],
     ["healthcheck.railway.app"],
 )
 CSRF_TRUSTED_ORIGINS = _merge_unique(
@@ -132,8 +134,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -255,6 +257,7 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS")
 CORS_ALLOW_HEADERS = list(default_headers)
 CORS_ALLOW_METHODS = list(default_methods)
 CORS_URLS_REGEX = r"^/api/.*$"
