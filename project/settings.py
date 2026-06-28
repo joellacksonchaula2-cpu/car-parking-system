@@ -96,7 +96,7 @@ ALLOWED_HOSTS = _merge_unique(
     env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"]),
     [RAILWAY_PUBLIC_DOMAIN] if RAILWAY_PUBLIC_DOMAIN else [],
     [RAILWAY_PRIVATE_DOMAIN] if RAILWAY_PRIVATE_DOMAIN else [],
-    ["smart-parking-backend-production-18b7.up.railway.app"],
+    ["car-parking-system-production.up.railway.app"],
     ["healthcheck.railway.app"],
 )
 CSRF_TRUSTED_ORIGINS = _merge_unique(

@@ -111,7 +111,7 @@ If you deploy through Netlify, set `API_BASE_URL` as a site environment variable
 - Base directory: not required when using the root `netlify.toml`
 - Build command: `bash frontend/scripts/netlify-build.sh`
 - Publish directory: `frontend/build/web`
-- Environment variable: `API_BASE_URL=https://smart-parking-backend-production-18b7.up.railway.app/api`
+- Environment variable: `API_BASE_URL=https://car-parking-system-production.up.railway.app/api`
 
 If you use a custom Netlify domain, add that domain to the backend `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` Railway variables before you deploy.
 If you want the backend to trust several Netlify domains at once, set `NETLIFY_FRONTEND_ORIGINS` to a comma-separated list and redeploy the Railway service.
